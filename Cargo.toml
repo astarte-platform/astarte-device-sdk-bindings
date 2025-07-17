@@ -1,0 +1,25 @@
+[package]
+name = "astarte-device-python-bindings"
+version = "0.1.0"
+edition = "2021"
+categories = ["api-bindings"]
+documentation = "https://docs.rs/astarte-device-sdk"
+homepage = "https://astarte.cloud/"
+license = "Apache-2.0"
+#repository = "https://github.com/astarte-platform/astarte-device-sdk-rust"
+rust-version = "1.85.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "astarte_device_python_bindings"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = {version = "0.25", features = ["extension-module", "chrono"]}
+astarte-device-sdk = { version = "0.10.2" }
+tokio = { version = "1.36.0", features = ["rt-multi-thread"]}
+pyo3-async-runtimes = { version = "0.25.0", features = ["tokio-runtime"] }
+aws-lc-sys = { version = "0.26.0", features = ["bindgen"], optional = true }
+
+[features]
+bindgen = ["dep:aws-lc-sys"]
