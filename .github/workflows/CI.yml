@@ -48,7 +48,7 @@ jobs:
       - name: Install stable
         uses: dtolnay/rust-toolchain@stable
       - name: Install bindgen
-        run: sudo cargo install --force --locked bindgen-cli
+        run: cargo install --force --locked bindgen-cli
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -85,7 +85,7 @@ jobs:
       - name: Install stable
         uses: dtolnay/rust-toolchain@stable
       - name: Install bindgen
-        run: sudo cargo install --force --locked bindgen-cli
+        run: cargo install --force --locked bindgen-cli
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
