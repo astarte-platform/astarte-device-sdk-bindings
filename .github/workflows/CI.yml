@@ -45,6 +45,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
+      - name: Install stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install bindgen
+        run: sudo cargo install --force --locked bindgen-cli
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -78,6 +82,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
+      - name: Install stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install bindgen
+        run: sudo cargo install --force --locked bindgen-cli
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -91,6 +99,7 @@ jobs:
           name: wheels-musllinux-${{ matrix.platform.target }}
           path: dist
 
+  # FIXME install sqlite or add a vendored sqlite feature
   windows:
     runs-on: ${{ matrix.platform.runner }}
     strategy:
