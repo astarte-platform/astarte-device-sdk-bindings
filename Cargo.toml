@@ -17,7 +17,8 @@ crate-type = ["cdylib"]
 [dependencies]
 astarte-device-sdk = { version = "0.11", features = ["derive"] }
 aws-lc-sys = { version = "0.26.0", features = ["bindgen"], optional = true }
-uniffi = { version = "0.31.0", features = [ "cli" ] }
+# uniffi = { version = "0.31.0", features = [ "cli" ] }
+boltffi = "0.1"
 thiserror = "1.0"
 env_logger = "*"
 eyre = "*"
@@ -31,8 +32,8 @@ url = "2.5"
 [features]
 bindgen = ["dep:aws-lc-sys"]
 
-[build-dependencies]
-uniffi = { version = "0.31.0", features = [ "build" ] }
+# [build-dependencies]
+# uniffi = { version = "0.31.0", features = [ "build" ] }
 
 [[bin]]
 # This can be whatever name makes sense for your project, but the rest of this tutorial assumes uniffi-bindgen.
