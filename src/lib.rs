@@ -1,7 +1,6 @@
 use astarte_device_sdk::chrono::Utc;
 use astarte_device_sdk::types::Double;
-use astarte_device_sdk::{AstarteData, connection, error};
-
+use astarte_device_sdk::{connection, error, AstarteData};
 use astarte_device_sdk::{
     builder::DeviceBuilder,
     client::DeviceClient,
@@ -9,176 +8,116 @@ use astarte_device_sdk::{
     store::memory::MemoryStore,
     transport::mqtt::{Mqtt, MqttConfig},
 };
-
-use boltffi::{data, export};
 use tokio::runtime::Runtime;
-// use uniffi::deps::anyhow::Ok as UF_OK;
+use std::ffi::CStr;
+use std::os::raw::c_char;
 
-// uniffi::setup_scaffolding!();
-
-// ==========================================
-// 1. Data Types (Simplified for FFI)
-// ==========================================
-
-/// Represents the data values Astarte accepts.
-/// We map this to the SDK's `AstarteType`.
-#[data]
-pub enum AstarteVal {
-    // Double { value: f64 },
-    Integer { value: i32 },
-    // Boolean { value: bool },
-    // LongInteger { value: i64 },
-    // String { value: String },
-}
-
-/// Simplified configuration record.
-#[data]
-pub struct AstarteConfig {
-    pub realm: String,
-    pub device_id: String,
-    pub credentials_secret: String,
-    pub pairing_url: String,
-    pub ignore_ssl: bool,
-}
-
-#[boltffi::error]
-pub enum SdkError {
-    // #[error("Configuration error: {msg}")]
-    Config { msg: String },
-    // #[error("Connection failed: {msg}")]
-    Connection { msg: String },
-    // #[error("Send failed: {msg}")]
-    Send { msg: String },
-}
-
-// ==========================================
-// 2. Callback Interface
-// ==========================================
-
-/// Foreign languages implement this trait to receive events.
-#[export]
-pub trait EventListener: Send + Sync {
-    fn on_connected(&self);
-    fn on_disconnected(&self);
-    fn on_data_received(&self, interface: String, path: String, data: AstarteVal);
-}
-
-// ==========================================
-// 3. The Main Wrapper Object
-// ==========================================
-
-#[boltffi::data]
 pub struct AstarteDevice {
-    // inner: DeviceClient<Mqtt<MemoryStore>>,
-    // rt: Runtime,
+    inner: DeviceClient<Mqtt<MemoryStore>>,
+    rt: Runtime,
 }
 
-// #[export]
-// impl AstarteDevice {
-//     /// Constructor: Builds the SDK instance
-//     #[uniffi::constructor]
-//     pub fn new(
-//         config: AstarteConfig,
-//         interfaces_dir: String,
-//     ) -> Result<std::sync::Arc<Self>, SdkError> {
-//         use env_logger::Env;
+// Helper to safely convert C Strings to Rust Strings
+unsafe fn c_str_to_string(ptr: *const c_char) -> String {
+    CStr::from_ptr(ptr).to_string_lossy().into_owned()
+}
 
-//         env_logger::Builder::from_env(Env::default().default_filter_or("trace")).init();
+#[no_mangle]
+pub unsafe extern "C" fn astarte_device_new(
+    realm: *const c_char,
+    device_id: *const c_char,
+    credentials_secret: *const c_char,
+    pairing_url: *const c_char,
+    ignore_ssl: bool,
+    interfaces_dir: *const c_char,
+) -> *mut AstarteDevice {
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("trace")).init();
 
-//         let rt = Runtime::new().map_err(|e| SdkError::Config { msg: e.to_string() })?;
+    let rt = Runtime::new().unwrap();
 
-//         // Execute the build process inside the runtime
-//         let (device, connection) = rt
-//             .block_on(async {
-//                 let mut opts = MqttConfig::with_credential_secret(
-//                     &config.realm,
-//                     &config.device_id,
-//                     &config.credentials_secret,
-//                     &config.pairing_url,
-//                 );
+    let r_realm = c_str_to_string(realm);
+    let r_device_id = c_str_to_string(device_id);
+    let r_secret = c_str_to_string(credentials_secret);
+    let r_url = c_str_to_string(pairing_url);
+    let r_dir = c_str_to_string(interfaces_dir);
 
-//                 if config.ignore_ssl {
-//                     opts.ignore_ssl_errors();
-//                 }
+    let (device, mut connection) = rt.block_on(async {
+        let mut opts = MqttConfig::with_credential_secret(&r_realm, &r_device_id, &r_secret, &r_url);
 
-//                 let device = DeviceBuilder::new()
-//                     .store(MemoryStore::new())
-//                     .interface_directory(interfaces_dir)?
-//                     .connection(opts)
-//                     .build()
-//                     .await
-//                     .map_err(|e| SdkError::Connection { msg: e.to_string() })?;
+        if ignore_ssl {
+            opts.ignore_ssl_errors();
+        }
 
-//                 UF_OK(device)
-//             })
-//             .unwrap();
+        DeviceBuilder::new()
+            .store(MemoryStore::new())
+            .interface_directory(&r_dir)
+            .unwrap()
+            .connection(opts)
+            .build()
+            .await
+            .unwrap()
+    });
 
-//         rt.spawn(async move {
-//             let _ = connection.handle_events().await.unwrap();
-//             println!("disconnected");
-//         });
+    rt.spawn(async move {
+        let _ = connection.handle_events().await;
+        println!("disconnected");
+    });
 
-//         UF_OK(std::sync::Arc::new(Self { inner: device, rt }))
-//             .map_err(|e| SdkError::Connection { msg: e.to_string() })
-//     }
+    // Allocate on the heap and return a raw pointer
+    Box::into_raw(Box::new(AstarteDevice { inner: device, rt }))
+}
 
-//     // Sends data to Astarte.
-//     // This bridges the blocking FFI call to the async Rust SDK.
-//     pub fn send(
-//         &self,
-//         interface_name: String,
-//         interface_path: String,
-//         data: AstarteVal,
-//     ) -> Result<(), SdkError> {
-//         // Convert our simplified Enum to the SDK's AstarteType
-//         let sdk_data = match data {
-//             // AstarteVal::Double { value } => AstarteData::Double(astarte_device_sdk::types::Double(value)),
-//             AstarteVal::Integer { value } => AstarteData::Integer(value),
-//             // AstarteVal::Boolean { value } => AstarteData::BinaryBlob::Boolean(value),
-//             // AstarteVal::LongInteger { value } => AstarteData::BinaryBlob::LongInteger(value),
-//             // AstarteVal::String { value } => AstarteData::BinaryBlob::String(value),
-//         };
+#[no_mangle]
+pub unsafe extern "C" fn astarte_device_send(
+    ptr: *mut AstarteDevice,
+    interface_name: *const c_char,
+    interface_path: *const c_char,
+    value: i32,
+) {
+    if ptr.is_null() { return; }
 
-//         let mut device = self.inner.clone();
+    // Borrow the pointer, do not consume it
+    let device_wrapper = &*ptr;
+    let mut device = device_wrapper.inner.clone();
 
-//         Ok(self.rt.block_on(async move {
-//             device
-//                 .send_individual_with_timestamp(&interface_name, &interface_path, sdk_data,  Utc::now())
-//                 .await
-//                 .map_err(|e| SdkError::Send { msg: e.to_string() })
-//                 .unwrap();
-//         }))
-//     }
+    let r_name = c_str_to_string(interface_name);
+    let r_path = c_str_to_string(interface_path);
 
-//     // /// Starts the event loop in a background task.
-//     // /// This calls the `listener` methods when events occur.
-//     pub fn start_listening(&self, listener: Box<dyn EventListener>) {
-//         let device = self.inner.clone();
+    device_wrapper.rt.block_on(async move {
+        let _ = device
+            .send_individual_with_timestamp(&r_name, &r_path, AstarteData::Integer(value), Utc::now())
+            .await
+            .unwrap();
+    });
+}
 
-//         let listener = std::sync::Arc::new(listener); // Arc it to share across threads
+#[no_mangle]
+pub unsafe extern "C" fn astarte_device_start_listening(ptr: *mut AstarteDevice) {
+    if ptr.is_null() { return; }
+    let device_wrapper = &*ptr;
+    let device = device_wrapper.inner.clone();
 
-//         self.rt.block_on(async move {
-//             loop {
-//                 match device.recv().await {
-//                     Ok(event) => {
-//                         match event.data {
-//                             astarte_device_sdk::Value::Individual { data, timestamp } => {
-//                                 println!("receive Individual");
-//                             }
-//                             astarte_device_sdk::Value::Object { data, timestamp } => {
-//                                 println!("receive Object");
-//                             }
-//                             astarte_device_sdk::Value::Property(_) => {
-//                                 println!("receive prop");
-//                             }
-//                         };
-//                     }
-//                     Err(e) => {
-//                         println!("receive error: {:?}", e);
-//                         listener.on_disconnected();
-//                     }
-//                 }
-//             }
-//         });
-//     }
-// }
+    device_wrapper.rt.block_on(async move {
+        loop {
+            match device.recv().await {
+                Ok(event) => {
+                    match event.data {
+                        astarte_device_sdk::Value::Individual { .. } => println!("receive Individual"),
+                        astarte_device_sdk::Value::Object { .. } => println!("receive Object"),
+                        astarte_device_sdk::Value::Property(_) => println!("receive prop"),
+                    };
+                }
+                Err(e) => println!("receive error: {:?}", e),
+            }
+        }
+    });
+}
+
+// Crucial: You must provide a way for Java to free the memory!
+#[no_mangle]
+pub unsafe extern "C" fn astarte_device_free(ptr: *mut AstarteDevice) {
+    if !ptr.is_null() {
+        // Reconstruct the Box and let it drop
+        drop(Box::from_raw(ptr));
+    }
+}
