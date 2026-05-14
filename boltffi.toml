@@ -1,6 +1,14 @@
 [package]
 name = "astarte-device-sdk-bindings"
 
+[targets.java]
+package = "org.astarte.device.sdk.bindings"
+min_version = 8  # or 16, 17, 21
+module_name = "AstarteDeviceSdkBindings"
+
+[targets.java.jvm]
+enabled = true
+
 [targets.apple]
 enabled = true
 output = "dist/apple"
@@ -29,7 +37,7 @@ output = "dist/android"
 min_sdk = 24
 
 [targets.android.kotlin]
-package = "com.example.astarte_device_sdk_bindings"
+package = "org.astarte.device.sdk.bindings"
 api_style = "top_level"
 error_style = "throwing"
 factory_style = "constructors"

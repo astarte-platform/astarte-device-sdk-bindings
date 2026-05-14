@@ -187,6 +187,7 @@ dependencies = [
  "astarte-device-sdk",
  "aws-lc-sys 0.26.0",
  "boltffi",
+ "boltffi_core",
  "env_logger",
  "eyre",
  "log",
@@ -334,9 +335,9 @@ dependencies = [
 
 [[package]]
 name = "boltffi"
-version = "0.1.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "566f6f6a1f039c7360e489ef2543d9df82f19af08c3e2c96cae203b911b63ea5"
+checksum = "b7bd250a0080034a708868b1e04e83f5b3f384729659b9db55737025fe88219b"
 dependencies = [
  "boltffi_core",
  "boltffi_macros",
@@ -344,9 +345,9 @@ dependencies = [
 
 [[package]]
 name = "boltffi_core"
-version = "0.1.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b46e44738e1351af4ce884a569da0928144594ce4fd598c22ef2aeb68f6768bc"
+checksum = "5eb7cb64abbc11b9c789d612b34e7d9fffb38d7e956b0df719ef5bf9b5d1f344"
 dependencies = [
  "boltffi_macros",
  "url",
@@ -355,15 +356,15 @@ dependencies = [
 
 [[package]]
 name = "boltffi_ffi_rules"
-version = "0.1.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4cedeaa3afa513ef733faf58d5870ffb959f7f9acbe118d43694bb475c6603a2"
+checksum = "4e422ca03859cbcc95043a6711cf399cec235015b3571d988f6ce33b7f9ee2d3"
 
 [[package]]
 name = "boltffi_macros"
-version = "0.1.1"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b673014b1698241690518424227fbd10c054960b7a478b2db95adbf1d4937904"
+checksum = "79369485494bb46714f2d0582fdc72e36b2473e36ac3e076d91bffe08eb83923"
 dependencies = [
  "boltffi_ffi_rules",
  "proc-macro2",
