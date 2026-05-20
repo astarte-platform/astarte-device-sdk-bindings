@@ -65,9 +65,31 @@ astarte-sdk-java/           ← Gradle multi-project: app / list / utilities
 
 - `AstarteConfig` — plain data struct holding MQTT credentials and pairing URL
 - `AstarteDevice` — the main object; wraps `DeviceClient<Mqtt<MemoryStore>>` and a `tokio::Runtime` so blocking FFI calls can drive async SDK operations
-- `AstarteVal` — simplified enum of sendable data values (currently only `IInteger`)
+- `AstarteVal` — FFI-safe enum covering all 13 representable `AstarteData` variants (see table below); `BinaryBlobArray` is omitted because nested `Vec<Vec<u8>>` is unsupported by BoltFFI's `#[data]` macro
 - `EventListener` — callback interface implemented by Java callers to receive connect/disconnect/data events
 - `SdkError` — FFI error enum surfaced as a Java exception
+
+### AstarteVal variants
+
+| Variant | Inner field type | Notes |
+|---|---|---|
+| `Double` | `f64` | Validated (no NaN/Inf/subnormal) via `SdkDouble::try_from` |
+| `IInteger` | `i32` | Named `IInteger` to avoid clash with the Rust `Integer` keyword |
+| `Boolean` | `bool` | |
+| `LongInteger` | `i64` | |
+| `IString` | `String` | Named `IString` to avoid clash with the Rust `String` type |
+| `BinaryBlob` | `Vec<u8>` | |
+| `DateTime` | `i64` | Milliseconds since Unix epoch |
+| `DoubleArray` | `Vec<f64>` | Each element validated via `SdkDouble::try_from` |
+| `IntegerArray` | `Vec<i32>` | |
+| `BooleanArray` | `Vec<bool>` | |
+| `LongIntegerArray` | `Vec<i64>` | |
+| `StringArray` | `Vec<String>` | |
+| `DateTimeArray` | `Vec<i64>` | Milliseconds since Unix epoch |
+
+Conversions use standard Rust traits:
+- `TryFrom<AstarteData> for AstarteVal` (SDK → FFI, used in `start_listening`)
+- `TryFrom<AstarteVal> for AstarteData` (FFI → SDK, used in `send`)
 
 ### Async bridging pattern
 

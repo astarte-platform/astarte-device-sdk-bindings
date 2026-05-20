@@ -1,6 +1,8 @@
-use astarte_device_sdk::chrono::Utc;
-use astarte_device_sdk::types::Double;
-use astarte_device_sdk::{connection, error, AstarteData};
+use std::convert::TryFrom;
+
+use astarte_device_sdk::chrono::{TimeZone, Utc};
+use astarte_device_sdk::types::Double as SdkDouble;
+use astarte_device_sdk::AstarteData;
 
 use astarte_device_sdk::{
     builder::DeviceBuilder,
@@ -12,13 +14,89 @@ use astarte_device_sdk::{
 
 use boltffi::{data, export};
 use tokio::runtime::Runtime;
+
 #[data]
 pub enum AstarteVal {
-    // Double { value: f64 },
-    IInteger { value: i32 },
-    // Boolean { value: bool },
-    // LongInteger { value: i64 },
-    // String { value: String },
+    Double           { value: f64 },
+    IInteger         { value: i32 },
+    Boolean          { value: bool },
+    LongInteger      { value: i64 },
+    IString          { value: String },
+    BinaryBlob       { value: Vec<u8> },
+    DateTime         { value: i64 },         // milliseconds since Unix epoch
+    DoubleArray      { value: Vec<f64> },
+    IntegerArray     { value: Vec<i32> },
+    BooleanArray     { value: Vec<bool> },
+    LongIntegerArray { value: Vec<i64> },
+    StringArray      { value: Vec<String> },
+    DateTimeArray    { value: Vec<i64> },    // milliseconds since Unix epoch
+}
+
+impl TryFrom<AstarteData> for AstarteVal {
+    type Error = String;
+
+    fn try_from(data: AstarteData) -> Result<Self, Self::Error> {
+        Ok(match data {
+            AstarteData::Double(v)           => AstarteVal::Double      { value: v.into() },
+            AstarteData::Integer(v)          => AstarteVal::IInteger     { value: v },
+            AstarteData::Boolean(v)          => AstarteVal::Boolean      { value: v },
+            AstarteData::LongInteger(v)      => AstarteVal::LongInteger  { value: v },
+            AstarteData::String(v)           => AstarteVal::IString      { value: v },
+            AstarteData::BinaryBlob(v)       => AstarteVal::BinaryBlob   { value: v },
+            AstarteData::DateTime(v)         => AstarteVal::DateTime     { value: v.timestamp_millis() },
+            AstarteData::DoubleArray(v)      => AstarteVal::DoubleArray  { value: v.into_iter().map(f64::from).collect() },
+            AstarteData::IntegerArray(v)     => AstarteVal::IntegerArray     { value: v },
+            AstarteData::BooleanArray(v)     => AstarteVal::BooleanArray     { value: v },
+            AstarteData::LongIntegerArray(v) => AstarteVal::LongIntegerArray { value: v },
+            AstarteData::StringArray(v)      => AstarteVal::StringArray      { value: v },
+            AstarteData::BinaryBlobArray(_)  => return Err("BinaryBlobArray is not supported".into()),
+            AstarteData::DateTimeArray(v)    => AstarteVal::DateTimeArray {
+                value: v.into_iter().map(|d| d.timestamp_millis()).collect(),
+            },
+        })
+    }
+}
+
+impl TryFrom<AstarteVal> for AstarteData {
+    type Error = SdkError;
+
+    fn try_from(val: AstarteVal) -> Result<Self, Self::Error> {
+        Ok(match val {
+            AstarteVal::Double { value } => AstarteData::Double(
+                SdkDouble::try_from(value).map_err(|e| SdkError::Send { msg: e.to_string() })?,
+            ),
+            AstarteVal::IInteger     { value } => AstarteData::Integer(value),
+            AstarteVal::Boolean      { value } => AstarteData::Boolean(value),
+            AstarteVal::LongInteger  { value } => AstarteData::LongInteger(value),
+            AstarteVal::IString      { value } => AstarteData::String(value),
+            AstarteVal::BinaryBlob   { value } => AstarteData::BinaryBlob(value),
+            AstarteVal::DateTime { value } => AstarteData::DateTime(
+                Utc.timestamp_millis_opt(value)
+                    .single()
+                    .ok_or_else(|| SdkError::Send { msg: format!("invalid timestamp: {value}") })?,
+            ),
+            AstarteVal::DoubleArray { value } => AstarteData::DoubleArray(
+                value
+                    .into_iter()
+                    .map(|v| SdkDouble::try_from(v).map_err(|e| SdkError::Send { msg: e.to_string() }))
+                    .collect::<Result<_, _>>()?,
+            ),
+            AstarteVal::IntegerArray     { value } => AstarteData::IntegerArray(value),
+            AstarteVal::BooleanArray     { value } => AstarteData::BooleanArray(value),
+            AstarteVal::LongIntegerArray { value } => AstarteData::LongIntegerArray(value),
+            AstarteVal::StringArray      { value } => AstarteData::StringArray(value),
+            AstarteVal::DateTimeArray { value } => AstarteData::DateTimeArray(
+                value
+                    .into_iter()
+                    .map(|v| {
+                        Utc.timestamp_millis_opt(v)
+                            .single()
+                            .ok_or_else(|| SdkError::Send { msg: format!("invalid timestamp: {v}") })
+                    })
+                    .collect::<Result<_, _>>()?,
+            ),
+        })
+    }
 }
 
 /// Simplified configuration record.
@@ -34,17 +112,10 @@ pub struct AstarteConfig {
 #[derive(Debug)]
 #[boltffi::error]
 pub enum SdkError {
-    // #[error("Configuration error: {msg}")]
-    Config { msg: String },
-    // #[error("Connection failed: {msg}")]
+    Config     { msg: String },
     Connection { msg: String },
-    // #[error("Send failed: {msg}")]
-    Send { msg: String },
+    Send       { msg: String },
 }
-
-// ==========================================
-// 2. Callback Interface
-// ==========================================
 
 /// Foreign languages implement this trait to receive events.
 #[export]
@@ -54,11 +125,6 @@ pub trait EventListener: Send + Sync {
     fn on_data_received(&self, interface: String, path: String, data: AstarteVal);
 }
 
-// ==========================================
-// 3. The Main Wrapper Object
-// ==========================================
-
-// #[data]
 pub struct AstarteDevice {
     inner: DeviceClient<Mqtt<MemoryStore>>,
     rt: Runtime,
@@ -66,7 +132,6 @@ pub struct AstarteDevice {
 
 #[export]
 impl AstarteDevice {
-    /// Constructor: Builds the SDK instance
     pub fn new(config: AstarteConfig, interfaces_dir: String) -> Result<Self, SdkError> {
         use env_logger::Env;
 
@@ -74,7 +139,6 @@ impl AstarteDevice {
 
         let rt = Runtime::new().map_err(|e| SdkError::Config { msg: e.to_string() })?;
 
-        // Execute the build process inside the runtime
         let (device, connection) = rt
             .block_on(async {
                 let mut opts = MqttConfig::with_credential_secret(
@@ -97,75 +161,62 @@ impl AstarteDevice {
                     .await
                     .map_err(|e| SdkError::Connection { msg: e.to_string() })
             })
-            .map_err(|e| SdkError::Connection {
-                msg: "".to_string(),
-            })?;
+            ?;
 
         rt.spawn(async move {
-            let _ = connection.handle_events().await.unwrap();
+            let _ = connection.handle_events().await;
             println!("disconnected");
         });
 
         Ok(Self { inner: device, rt })
     }
 
-    // Sends data to Astarte.
-    // This bridges the blocking FFI call to the async Rust SDK.
     pub fn send(
         &self,
         interface_name: String,
         interface_path: String,
         data: AstarteVal,
     ) -> Result<(), SdkError> {
-        // Convert our simplified Enum to the SDK's AstarteType
-        let sdk_data = match data {
-            // AstarteVal::Double { value } => AstarteData::Double(astarte_device_sdk::types::Double(value)),
-            AstarteVal::IInteger { value } => AstarteData::Integer(value),
-            // AstarteVal::Boolean { value } => AstarteData::BinaryBlob::Boolean(value),
-            // AstarteVal::LongInteger { value } => AstarteData::BinaryBlob::LongInteger(value),
-            // AstarteVal::String { value } => AstarteData::BinaryBlob::String(value),
-        };
-
+        let sdk_data: AstarteData = data.try_into()?;
         let mut device = self.inner.clone();
 
-        // Ok(self.rt.block_on(async move {
-        //     device
-        //         .send_individual_with_timestamp(
-        //             &interface_name,
-        //             &interface_path,
-        //             sdk_data,
-        //             Utc::now(),
-        //         )
-        //         .await
-        //         .map_err(|e| SdkError::Send { msg: e.to_string() })
-        //         .unwrap();
-        // }))
-        Ok(())
+        self.rt.block_on(async move {
+            device
+                .send_individual_with_timestamp(
+                    &interface_name,
+                    &interface_path,
+                    sdk_data,
+                    Utc::now(),
+                )
+                .await
+                .map_err(|e| SdkError::Send { msg: e.to_string() })
+        })
     }
 
-    // /// Starts the event loop in a background task.
-    // /// This calls the `listener` methods when events occur.
     pub fn start_listening(&self, listener: Box<dyn EventListener>) {
         let device = self.inner.clone();
-
-        let listener = std::sync::Arc::new(listener); // Arc it to share across threads
+        let listener = std::sync::Arc::new(listener);
 
         self.rt.block_on(async move {
             loop {
                 match device.recv().await {
-                    Ok(event) => {
-                        match event.data {
-                            astarte_device_sdk::Value::Individual { data, timestamp } => {
-                                println!("receive Individual");
+                    Ok(event) => match event.data {
+                        astarte_device_sdk::Value::Individual { data, .. } => {
+                            if let Ok(val) = data.try_into() {
+                                listener.on_data_received(
+                                    event.interface.to_string(),
+                                    event.path.to_string(),
+                                    val,
+                                );
                             }
-                            astarte_device_sdk::Value::Object { data, timestamp } => {
-                                println!("receive Object");
-                            }
-                            astarte_device_sdk::Value::Property(_) => {
-                                println!("receive prop");
-                            }
-                        };
-                    }
+                        }
+                        astarte_device_sdk::Value::Object { .. } => {
+                            println!("received Object event (not yet supported)");
+                        }
+                        astarte_device_sdk::Value::Property(_) => {
+                            println!("received Property event");
+                        }
+                    },
                     Err(e) => {
                         println!("receive error: {:?}", e);
                         listener.on_disconnected();
