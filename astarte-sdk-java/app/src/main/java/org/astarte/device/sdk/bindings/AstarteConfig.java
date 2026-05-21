@@ -4,17 +4,29 @@ package org.astarte.device.sdk.bindings;
 import java.util.Objects;
 
 /**
- * Simplified configuration record.
+ * MQTT credentials and endpoint configuration required to connect a device to Astarte.
+ *
+ * <p>All fields are immutable. Obtain a pairing URL and credentials secret from the Astarte
+ * dashboard or provisioning API before constructing this object.
  */
 public final class AstarteConfig {
+    /** Astarte realm the device belongs to. */
     public final String realm;
+    /** Unique device identifier (base64url-encoded 128-bit value). */
     public final String deviceId;
+    /** Device credential secret obtained during the pairing phase. */
     public final String credentialsSecret;
+    /** Base URL of the Astarte Pairing API (e.g. {@code "https://api.astarte.example/pairing"}). */
     public final String pairingUrl;
+    /** When {@code true}, TLS certificate validation is skipped. Use only in development. */
     public final boolean ignoreSsl;
 
     /**
-     * Simplified configuration record.
+     * @param realm             Astarte realm name
+     * @param deviceId          device identifier (base64url, 128-bit)
+     * @param credentialsSecret credential secret from the pairing phase
+     * @param pairingUrl        base URL of the Astarte Pairing API
+     * @param ignoreSsl         {@code true} to disable TLS certificate validation (dev only)
      */
     public AstarteConfig(String realm, String deviceId, String credentialsSecret, String pairingUrl, boolean ignoreSsl) {
         this.realm = realm;

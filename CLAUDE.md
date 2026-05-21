@@ -17,7 +17,10 @@ cargo check          # type-check without linking
 
 ### Generate Java bindings
 
+`JAVA_HOME` must be set before running this command:
+
 ```sh
+export JAVA_HOME="/usr/lib/jvm/java-8-openjdk-amd64"
 boltffi pack java    # compile Rust, generate JNI glue, .so files, and Java sources into dist/java/
 ```
 
@@ -26,11 +29,29 @@ Output lands in `dist/java/`:
 - `libastarte_device_sdk_bindings_jni.so` — the JNI wrapper
 - `org/astarte/device/sdk/bindings/` — generated Java sources
 
+**Post-generation fix:** BoltFFI generates `Double.compare`, `Double.hashCode`, `Boolean.hashCode`,
+and `Integer.hashCode` as static calls inside inner classes of the same name, which shadows
+`java.lang.Double` / `java.lang.Boolean` / `java.lang.Integer`. After each `boltffi pack java` run,
+qualify those calls with the fully-qualified type name in `dist/java/…/AstarteVal.java`:
+
+```java
+// AstarteVal.Double.hashCode()
+result = 31 * result + java.lang.Double.hashCode(value);
+return java.lang.Double.compare(this.value, other.value) == 0;
+
+// AstarteVal.Boolean.hashCode()
+result = 31 * result + java.lang.Boolean.hashCode(value);
+
+// AstarteVal.Integer.hashCode()
+result = 31 * result + java.lang.Integer.hashCode(value);
+```
+
 ### Wire up and run the Java app (Gradle 8)
 
 ```sh
 cp dist/java/libastarte_device_sdk_bindings_jni.so astarte-sdk-java/app/libs/native/
-cp dist/java/libastarte_device_sdk_bindings.so astarte-sdk-java/app/target/debug/libastarte_device_sdk_bindings.so
+mkdir -p astarte-sdk-java/app/target/debug
+cp dist/java/libastarte_device_sdk_bindings.so astarte-sdk-java/app/target/debug/
 cp -r dist/java/org astarte-sdk-java/app/src/main/java/
 
 cd astarte-sdk-java
@@ -66,7 +87,8 @@ astarte-sdk-java/           ← Gradle multi-project: app / list / utilities
 - `AstarteConfig` — plain data struct holding MQTT credentials and pairing URL
 - `AstarteDevice` — the main object; wraps `DeviceClient<Mqtt<MemoryStore>>` and a `tokio::Runtime` so blocking FFI calls can drive async SDK operations
 - `AstarteVal` — FFI-safe enum covering all 13 representable `AstarteData` variants (see table below); `BinaryBlobArray` is omitted because nested `Vec<Vec<u8>>` is unsupported by BoltFFI's `#[data]` macro
-- `EventListener` — callback interface implemented by Java callers to receive connect/disconnect/data events
+- `ObjectEntry` — plain data struct (`key: String`, `value: AstarteVal`) used to represent one field of an Object-aggregation event; passed as `Vec<ObjectEntry>` in `EventListener::on_object_received`
+- `EventListener` — callback interface implemented by Java callers to receive connect/disconnect/data events; has six methods: `on_connected`, `on_disconnected`, `on_data_received`, `on_object_received`, `on_property_received`, `on_property_unset`
 - `SdkError` — FFI error enum surfaced as a Java exception
 
 ### AstarteVal variants
@@ -74,7 +96,7 @@ astarte-sdk-java/           ← Gradle multi-project: app / list / utilities
 | Variant | Inner field type | Notes |
 |---|---|---|
 | `Double` | `f64` | Validated (no NaN/Inf/subnormal) via `SdkDouble::try_from` |
-| `IInteger` | `i32` | Named `IInteger` to avoid clash with the Rust `Integer` keyword |
+| `Integer` | `i32` | |
 | `Boolean` | `bool` | |
 | `LongInteger` | `i64` | |
 | `IString` | `String` | Named `IString` to avoid clash with the Rust `String` type |

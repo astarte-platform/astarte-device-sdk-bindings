@@ -784,6 +784,9 @@ final class BoltFFIResult<Ok, Err> {
     static native void boltffiCallbackEventListenerOnConnected(long handle);
     static native void boltffiCallbackEventListenerOnDisconnected(long handle);
     static native void boltffiCallbackEventListenerOnDataReceived(long handle, byte[] _interface, byte[] path, ByteBuffer data);
+    static native void boltffiCallbackEventListenerOnObjectReceived(long handle, byte[] _interface, byte[] path, ByteBuffer entries);
+    static native void boltffiCallbackEventListenerOnPropertyReceived(long handle, byte[] _interface, byte[] path, ByteBuffer data);
+    static native void boltffiCallbackEventListenerOnPropertyUnset(long handle, byte[] _interface, byte[] path);
 }
 public final class AstarteDeviceSdkBindings {
     private AstarteDeviceSdkBindings() {}

@@ -11,6 +11,7 @@ import org.astarte.device.sdk.bindings.AstarteConfig;
 import org.astarte.device.sdk.bindings.AstarteDevice;
 import org.astarte.device.sdk.bindings.AstarteVal;
 import org.astarte.device.sdk.bindings.EventListener;
+import org.astarte.device.sdk.bindings.ObjectEntry;
 import static org.example.app.MessageUtils.getMessage;
 import org.example.list.LinkedList;
 import static org.example.utilities.StringUtils.join;
@@ -41,13 +42,28 @@ public class App {
 
                     @Override
                     public void onDataReceived(String _interface, String path, AstarteVal data) {
-                        System.err.println("Unimplemented method 'onDataReceived'");
+                        System.err.println("onDataReceived: " + _interface + path + " data=" + data);
+                    }
+
+                    @Override
+                    public void onObjectReceived(String _interface, String path, java.util.List<ObjectEntry> entries) {
+                        System.err.println("onObjectReceived: " + _interface + path + " entries=" + entries.size());
+                    }
+
+                    @Override
+                    public void onPropertyReceived(String _interface, String path, AstarteVal data) {
+                        System.err.println("onPropertyReceived: " + _interface + path + " data=" + data);
+                    }
+
+                    @Override
+                    public void onPropertyUnset(String _interface, String path) {
+                        System.err.println("onPropertyUnset: " + _interface + path);
                     }
                 });
             });
             int i = 0;
             while (i < 10) {
-                device.send("com.example.MyInterface", "/my/path", new AstarteVal.IInteger(10));
+                device.send("com.example.MyInterface", "/my/path", new AstarteVal.Integer(10));
                 i++;
                 Thread.sleep(1000);
             }
