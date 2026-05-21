@@ -35,6 +35,7 @@ skip_package_swift = false
 enabled = true
 output = "dist/android"
 min_sdk = 24
+architectures = ["arm64", "x86_64"]
 
 [targets.android.kotlin]
 package = "org.astarte.device.sdk.bindings"

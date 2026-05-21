@@ -15,7 +15,7 @@ name = "astarte_device_sdk_bindings"
 crate-type = ["staticlib", "cdylib"]
 
 [dependencies]
-astarte-device-sdk = { version = "0.11", features = ["derive"] }
+astarte-device-sdk = { version = "0.11", features = ["derive", "cross"] }
 aws-lc-sys = { version = "0.26.0", features = ["bindgen"], optional = true }
 # uniffi = { version = "0.31.0", features = [ "cli" ] }
 boltffi = "0.25"

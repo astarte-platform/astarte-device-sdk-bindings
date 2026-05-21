@@ -46,6 +46,72 @@ result = 31 * result + java.lang.Boolean.hashCode(value);
 result = 31 * result + java.lang.Integer.hashCode(value);
 ```
 
+### Generate Android bindings
+
+`get_android` sources `$HOME/Android/Sdk/export.sh` (sets `ANDROID_HOME`, `ANDROID_NDK`, and `PATH`).
+
+```sh
+get_android
+export JAVA_HOME="/usr/lib/jvm/java-8-openjdk-amd64"
+boltffi pack android    # compiles Rust for Android ABIs, generates Kotlin source and jniLibs
+```
+
+Output lands in `dist/android/`:
+- `jniLibs/{arm64-v8a,armeabi-v7a,x86_64,x86}/libastarte-device-sdk-bindings.so`
+- `kotlin/org/astarte/device/sdk/bindings/AstarteDeviceSdkBindings.kt` — all types in one file
+
+**Post-generation fixes** required in `dist/android/kotlin/…/AstarteDeviceSdkBindings.kt` (apply these once, then copy):
+
+1. **Missing `kotlinx.coroutines` imports** — add after the existing `kotlinx.coroutines.*` imports:
+   ```kotlin
+   import kotlinx.coroutines.CoroutineScope
+   import kotlinx.coroutines.Dispatchers
+   import kotlinx.coroutines.Job
+   import kotlinx.coroutines.SupervisorJob
+   import kotlinx.coroutines.launch
+   ```
+
+2. **Shadowed stdlib types in `AstarteVal`** — qualify four data class property types:
+   ```kotlin
+   data class Double(val `value`: kotlin.Double) : AstarteVal()
+   data class Boolean(val `value`: kotlin.Boolean) : AstarteVal()
+   data class DoubleArray(val `value`: kotlin.DoubleArray) : AstarteVal()
+   data class BooleanArray(val `value`: kotlin.BooleanArray) : AstarteVal()
+   ```
+
+3. **`interface` keyword as parameter name** — escape with backticks in the `Native` object's `external fun` declarations:
+   ```kotlin
+   // change: , interface: ByteBuffer,
+   // to:     , `interface`: ByteBuffer,
+   ```
+
+4. **`run {}` in secondary constructor** — qualify the inner `run` block to avoid `this`-before-init error:
+   ```kotlin
+   // In AstarteDevice constructor, change inner bare `run {` to `kotlin.run {`
+   ```
+
+### Wire up and run the Android app (Gradle 7 / AGP 4.2.2)
+
+```sh
+# Copy .so files (arm64-v8a and x86_64 recommended)
+cp -r dist/android/jniLibs/arm64-v8a  astarte-sdk-android/app/src/main/jniLibs/
+cp -r dist/android/jniLibs/x86_64     astarte-sdk-android/app/src/main/jniLibs/
+
+# Apply post-generation fixes to the Kotlin source (see above), then copy
+cp dist/android/kotlin/org/astarte/device/sdk/bindings/AstarteDeviceSdkBindings.kt \
+   astarte-sdk-android/app/src/main/kotlin/org/astarte/device/sdk/bindings/
+
+export JAVA_HOME="/usr/lib/jvm/java-8-openjdk-amd64"
+export ANDROID_HOME=$HOME/Android/Sdk
+cd astarte-sdk-android
+
+./gradlew test          # run local JVM unit tests (no device needed)
+./gradlew assembleDebug # build APK
+./gradlew installDebug  # deploy to connected device/emulator
+```
+
+The `.so` loads via `System.loadLibrary("astarte-device-sdk-bindings")` (detected automatically on Android by the `Native` object in the generated file).
+
 ### Wire up and run the Java app (Gradle 8)
 
 ```sh
@@ -67,10 +133,17 @@ The JVM is launched with `-Djava.library.path=libs/native` (set in `app/build.gr
 src/lib.rs                  ← Rust FFI surface (BoltFFI macros)
 interfaces/                 ← Astarte interface JSON definitions
 dist/java/                  ← BoltFFI-generated artifacts (JNI glue + Java wrappers)
+dist/android/               ← BoltFFI-generated artifacts (jniLibs + Kotlin source)
 astarte-sdk-java/           ← Gradle multi-project: app / list / utilities
   app/src/main/java/org/
     astarte/device/sdk/bindings/   ← copied from dist/java after boltffi pack
     example/app/App.java           ← demo entry point
+astarte-sdk-android/        ← Android Gradle project (AGP 4.2.2, min SDK 24)
+  app/src/main/
+    kotlin/org/astarte/device/sdk/
+      bindings/             ← copied from dist/android/kotlin/ (with post-gen fixes)
+      example/MainActivity.kt  ← demo entry point
+    jniLibs/{arm64-v8a,x86_64}/   ← copied from dist/android/jniLibs/
 ```
 
 ### BoltFFI macro conventions in `src/lib.rs`
