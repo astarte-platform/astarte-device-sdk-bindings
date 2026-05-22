@@ -189,3 +189,119 @@ Conversions use standard Rust traits:
 ### Async bridging pattern
 
 The Rust SDK is fully async. `AstarteDevice` holds a `tokio::Runtime` and uses `rt.block_on(...)` to drive async calls from synchronous FFI entry points. The connection event loop runs as a spawned task inside the same runtime.
+
+---
+
+## Generate C# bindings
+
+BoltFFI v0.25+ supports C# code generation via `boltffi pack csharp`. Generated sources land in `dist/csharp/src/` and are then copied to `astarte-sdk-csharp/AstarteSdk/` with post-generation fixes applied, mirroring the Java/Android workflow.
+
+### Generate and pack
+
+```sh
+boltffi pack csharp --release   # compiles Rust for linux-x64, generates C# sources + NuGet layout
+```
+
+Output lands in `dist/csharp/`:
+- `src/*.cs` — generated C# sources (namespace `AstarteDeviceSdkBindings`)
+- `runtimes/linux-x64/native/libastarte_device_sdk_bindings.so` — native library
+- `BoltFFI.CSharp.csproj` — reference project (targets net10.0; the app project uses net8.0)
+
+The `[targets.csharp]` section in `boltffi.toml`:
+
+```toml
+[targets.csharp]
+enabled = true
+output = "dist/csharp"
+
+[targets.csharp.nuget]
+package_id = "Astarte.Device.Sdk.Bindings"
+version = "0.1.0"
+authors = ["Secomind"]
+```
+
+### Wire up the C# app (project layout)
+
+After `boltffi pack csharp`, copy the generated files and apply the post-generation fix:
+
+```sh
+cp dist/csharp/src/*.cs astarte-sdk-csharp/AstarteSdk/
+# then apply the post-generation fix described below
+```
+
+```
+astarte-sdk-csharp/
+├── AstarteSdk.sln
+├── AstarteSdk/                           ← library (net8.0, AllowUnsafeBlocks)
+│   ├── AstarteDeviceSdkBindings.cs       ← generated: WireReader/Writer, vtable, NativeMethods
+│   ├── AstarteConfig.cs                  ← generated
+│   ├── AstarteVal.cs                     ← generated (abstract record, 13 sealed record variants)
+│   ├── ObjectEntry.cs                    ← generated (readonly record struct)
+│   ├── SdkError.cs                       ← generated (abstract record + SdkErrorException)
+│   └── AstarteDevice.cs                  ← generated + post-generation fix
+├── AstarteSdk.Tests/                     ← xUnit tests (no native library needed)
+│   ├── AstarteValTests.cs
+│   ├── AstarteConfigTests.cs
+│   ├── ObjectEntryTests.cs
+│   └── WireCodecTests.cs                 ← encode/decode round-trips
+└── AstarteSdkExample/                    ← console demo app
+    └── Program.cs
+```
+
+### Post-generation fix: missing `AstarteDevice` constructor
+
+The C# generator does not emit the `new` constructor for `AstarteDevice` (boltffi issue). Apply this fix to the **copied** `AstarteDevice.cs` (not the `dist/` original):
+
+**1. In `AstarteDeviceSdkBindings.cs`, inside `NativeMethods`, add before `AstarteDeviceFree`:**
+
+```csharp
+[DllImport(LibName, EntryPoint = "boltffi_astarte_device_new")]
+internal static extern IntPtr AstarteDeviceNew(byte[] config, UIntPtr configLen, byte[] interfacesDir, UIntPtr interfacesDirLen);
+```
+
+**2. In `AstarteDevice.cs`, add after the private `AstarteDevice(IntPtr handle)` constructor:**
+
+```csharp
+using System.Runtime.InteropServices;  // add to top-level usings
+
+public AstarteDevice(AstarteConfig config, string interfacesDir)
+    : this(CreateHandle(config, interfacesDir)) { }
+
+private static IntPtr CreateHandle(AstarteConfig config, string interfacesDir)
+{
+    using var configWire = new WireWriter(config.WireEncodedSize());
+    config.WireEncodeTo(configWire);
+    byte[] configBytes = configWire.ToArray();
+    byte[] dirBytes = Encoding.UTF8.GetBytes(interfacesDir);
+    IntPtr handle = NativeMethods.AstarteDeviceNew(
+        configBytes, (UIntPtr)configBytes.Length,
+        dirBytes, (UIntPtr)dirBytes.Length);
+    if (handle == IntPtr.Zero)
+        throw new SdkErrorException(new SdkError.Config("Failed to create AstarteDevice"));
+    return handle;
+}
+```
+
+### Array equality note (C# records)
+
+`AstarteVal` variants that hold arrays (`BinaryBlob`, `DoubleArray`, etc.) are `sealed record` types. C# records use reference equality for array fields, so two instances with the same content are **not** record-equal. Compare `.Value` directly (xUnit's `Assert.Equal` on arrays does structural comparison).
+
+### Copy and build (Linux, .NET 8)
+
+```sh
+# 1. Copy the native shared library next to the example binary
+cp dist/csharp/runtimes/linux-x64/native/libastarte_device_sdk_bindings.so \
+   astarte-sdk-csharp/AstarteSdkExample/
+
+# 2. Build everything
+cd astarte-sdk-csharp
+dotnet build
+
+# 3. Run unit tests (no native library needed – tests are pure managed code)
+dotnet test AstarteSdk.Tests/
+
+# 4. Run the example (requires a live Astarte broker and real credentials)
+dotnet run --project AstarteSdkExample/
+```
+
+On Linux the runtime searches for `libastarte_device_sdk_bindings.so` next to the executable, then `LD_LIBRARY_PATH`, then the standard library search path.

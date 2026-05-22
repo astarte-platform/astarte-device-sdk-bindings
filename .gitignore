@@ -112,3 +112,9 @@ lint/tmp/
 
 .vscode/
 dist/
+
+# C# / .NET
+obj/
+.vs/
+*.user
+*.nupkg

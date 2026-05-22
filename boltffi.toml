@@ -49,6 +49,18 @@ factory_style = "constructors"
 
 [targets.android.pack]
 
+[targets.csharp]
+enabled = true
+output = "dist/csharp"
+
+[targets.csharp.nuget]
+package_id = "Astarte.Device.Sdk.Bindings"
+version = "0.1.0"
+authors = ["Secomind"]
+
+[targets.csharp.bindings]
+namespace = "Astarte.Device.Sdk.Bindings"
+
 [targets.wasm]
 enabled = true
 triple = "wasm32-unknown-unknown"
