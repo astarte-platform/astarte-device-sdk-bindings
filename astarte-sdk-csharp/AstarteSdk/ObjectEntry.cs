@@ -9,8 +9,11 @@ using System.Text;
 namespace AstarteDeviceSdkBindings
 {
     /// <summary>
-    /// One field of an Object-aggregation event (key + converted value).
+    /// A single key–value field within an Astarte Object-aggregation event.
+    /// A list of these is delivered to <see cref="EventListener.OnObjectReceived"/>.
     /// </summary>
+    /// <param name="Key">The endpoint name of the field (e.g. <c>"temperature"</c>).</param>
+    /// <param name="Value">The field value as an <see cref="AstarteVal"/> variant.</param>
     public readonly record struct ObjectEntry(
         string Key,
         AstarteVal Value

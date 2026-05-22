@@ -8,15 +8,34 @@ using System.Text;
 
 namespace AstarteDeviceSdkBindings
 {
+    /// <summary>
+    /// Discriminated union of errors that the Astarte Device SDK can return.
+    /// Use pattern matching to distinguish between error kinds.
+    /// </summary>
     public abstract record SdkError
     {
         private SdkError() { }
+
+        /// <summary>
+        /// A configuration or initialisation error (invalid credentials, malformed pairing URL,
+        /// missing interface files, etc.).
+        /// </summary>
+        /// <param name="Msg">Human-readable description from the Rust SDK.</param>
         public sealed record Config(
             string Msg
         ) : SdkError;
+
+        /// <summary>
+        /// A connection error (broker unreachable, TLS handshake failure, authentication
+        /// rejected, etc.).
+        /// </summary>
+        /// <param name="Msg">Human-readable description from the Rust SDK.</param>
         public sealed record Connection(
             string Msg
         ) : SdkError;
+
+        /// <summary>An error that occurred while publishing data to the broker.</summary>
+        /// <param name="Msg">Human-readable description from the Rust SDK.</param>
         public sealed record Send(
             string Msg
         ) : SdkError;
@@ -64,14 +83,13 @@ namespace AstarteDeviceSdkBindings
         }
     }
     /// <summary>
-    /// Thrown by generated wrapper methods when the Rust side returns
-    /// a <c>SdkError</c> as the error. The original value is
-    /// exposed through <c>Error</c>; the inherited <c>Message</c>
-    /// derives from it (forwarded from a <c>Message</c> field when the
-    /// wrapped type has one, otherwise the value's <c>ToString()</c>).
+    /// Exception thrown when the Rust SDK returns an <see cref="SdkError"/>.
+    /// The structured error value is available via <see cref="Error"/>;
+    /// <see cref="Exception.Message"/> is derived from it.
     /// </summary>
     public sealed class SdkErrorException : Exception
     {
+        /// <summary>The structured SDK error that caused this exception.</summary>
         public SdkError Error { get; }
 
         public SdkErrorException(SdkError error) : base(error.ToString())

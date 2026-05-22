@@ -11,6 +11,13 @@ using System.Runtime.InteropServices;
 
 namespace AstarteDeviceSdkBindings
 {
+    /// <summary>
+    /// Represents a connected Astarte device. Wraps the native Rust device handle.
+    /// </summary>
+    /// <remarks>
+    /// Dispose the instance (or use a <c>using</c> statement) to release the underlying
+    /// native handle and close the MQTT connection.
+    /// </remarks>
     public sealed class AstarteDevice : IDisposable
     {
         private IntPtr _handle;
@@ -21,6 +28,17 @@ namespace AstarteDeviceSdkBindings
             _handle = handle;
         }
 
+        /// <summary>
+        /// Creates a new Astarte device and connects it to the broker.
+        /// </summary>
+        /// <param name="config">Connection credentials and pairing URL.</param>
+        /// <param name="interfacesDir">
+        /// Path to the directory containing Astarte interface definition JSON files.
+        /// </param>
+        /// <exception cref="SdkErrorException">
+        /// Thrown if the native handle could not be created — e.g. invalid credentials,
+        /// unreachable pairing URL, or malformed interface files.
+        /// </exception>
         public AstarteDevice(AstarteConfig config, string interfacesDir)
             : this(CreateHandle(config, interfacesDir)) { }
 
@@ -38,6 +56,16 @@ namespace AstarteDeviceSdkBindings
             return handle;
         }
 
+        /// <summary>
+        /// Publishes a value on the specified interface endpoint.
+        /// </summary>
+        /// <param name="interfaceName">
+        /// Fully-qualified Astarte interface name (e.g. <c>com.example.DeviceDatastream</c>).
+        /// </param>
+        /// <param name="interfacePath">
+        /// The endpoint path within the interface (e.g. <c>/sensor/temperature</c>).
+        /// </param>
+        /// <param name="data">The value to send.</param>
         public void Send(string interfaceName, string interfacePath, AstarteVal data)
         {
             ThrowIfDisposed();
@@ -49,12 +77,27 @@ namespace AstarteDeviceSdkBindings
             NativeMethods.AstarteDeviceSend(_handle, _interfaceNameBytes, (UIntPtr)_interfaceNameBytes.Length, _interfacePathBytes, (UIntPtr)_interfacePathBytes.Length, _dataBytes, (UIntPtr)_dataBytes.Length);
         }
 
+        /// <summary>
+        /// Starts the device event loop and blocks until the device disconnects.
+        /// </summary>
+        /// <remarks>
+        /// This method blocks the calling thread. Invoke it on a dedicated background thread
+        /// so the rest of your application can continue running.
+        /// </remarks>
+        /// <param name="listener">Receiver for all connection and data events.</param>
         public void StartListening(EventListener listener)
         {
             ThrowIfDisposed();
             NativeMethods.AstarteDeviceStartListening(_handle, EventListenerBridge.Create(listener));
         }
 
+        /// <summary>
+        /// Disconnects the device from the Astarte broker.
+        /// </summary>
+        /// <remarks>
+        /// The method name preserves a typo from the underlying Rust FFI surface
+        /// (<c>boltffi_astarte_device_disconenct</c>).
+        /// </remarks>
         public void Disconenct()
         {
             ThrowIfDisposed();
@@ -68,6 +111,9 @@ namespace AstarteDeviceSdkBindings
             if (_handle == IntPtr.Zero) throw new ObjectDisposedException(nameof(AstarteDevice));
         }
 
+        /// <summary>
+        /// Releases the native device handle. Safe to call multiple times.
+        /// </summary>
         public void Dispose()
         {
             IntPtr handle = Interlocked.Exchange(ref _handle, IntPtr.Zero);

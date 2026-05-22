@@ -4,7 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Project Does
 
-This project exposes the [Astarte Device SDK (Rust)](https://github.com/astarte-platform/astarte-device-sdk-rust) to Java via a native FFI bridge built with [BoltFFI](https://www.boltffi.dev/docs/getting-started). The Rust crate compiles to a shared library; BoltFFI generates the JNI glue layer and Java wrapper classes automatically.
+This project exposes the [Astarte Device SDK (Rust)](https://github.com/astarte-platform/astarte-device-sdk-rust) to multiple platforms via a native FFI bridge built with [BoltFFI](https://www.boltffi.dev/docs/getting-started):
+
+- **Java** (JVM, Gradle 8) — JNI glue + generated Java wrappers
+- **Android** (Kotlin, AGP 4.2.2, min SDK 24) — native `.so` per ABI + generated Kotlin source
+- **C#** (.NET 8, Linux) — generated C# source via P/Invoke
+
+The Rust crate compiles to a shared library; BoltFFI generates the language-specific glue and wrapper classes automatically.
 
 ## Commands
 
@@ -134,6 +140,7 @@ src/lib.rs                  ← Rust FFI surface (BoltFFI macros)
 interfaces/                 ← Astarte interface JSON definitions
 dist/java/                  ← BoltFFI-generated artifacts (JNI glue + Java wrappers)
 dist/android/               ← BoltFFI-generated artifacts (jniLibs + Kotlin source)
+dist/csharp/                ← BoltFFI-generated artifacts (C# source + NuGet layout)
 astarte-sdk-java/           ← Gradle multi-project: app / list / utilities
   app/src/main/java/org/
     astarte/device/sdk/bindings/   ← copied from dist/java after boltffi pack
@@ -144,25 +151,29 @@ astarte-sdk-android/        ← Android Gradle project (AGP 4.2.2, min SDK 24)
       bindings/             ← copied from dist/android/kotlin/ (with post-gen fixes)
       example/MainActivity.kt  ← demo entry point
     jniLibs/{arm64-v8a,x86_64}/   ← copied from dist/android/jniLibs/
+astarte-sdk-csharp/         ← .NET 8 solution (library + tests + example)
+  AstarteSdk/               ← library project (copied from dist/csharp/src/ + post-gen fix)
+  AstarteSdk.Tests/         ← xUnit tests (no native library needed)
+  AstarteSdkExample/        ← console demo app
 ```
 
 ### BoltFFI macro conventions in `src/lib.rs`
 
 | Macro / attribute | Purpose |
 |---|---|
-| `#[data]` | Marks a `struct` or `enum` as a plain data type — generates Java POJO / sealed class |
-| `#[boltffi::error]` | Marks an `enum` as the error type — surfaces as a Java checked exception (`SdkError`) |
-| `#[export]` on a `trait` | Generates a Java `interface` that the caller implements (callback / listener pattern) |
-| `#[export]` on an `impl` block | Generates a Java class wrapping the Rust object with matching methods |
+| `#[data]` | Marks a `struct` or `enum` as a plain data type — generates a Java POJO, Kotlin data class, or C# record |
+| `#[boltffi::error]` | Marks an `enum` as the error type — surfaces as `SdkError` (Java exception / C# exception) |
+| `#[export]` on a `trait` | Generates a callback interface that the caller implements (`EventListener`) |
+| `#[export]` on an `impl` block | Generates a wrapper class around the Rust object with matching methods (`AstarteDevice`) |
 
 ### Key types
 
-- `AstarteConfig` — plain data struct holding MQTT credentials and pairing URL
+- `AstarteConfig` — plain data struct holding MQTT credentials and pairing URL; generated as a Java POJO, Kotlin data class, or C# `readonly record struct`
 - `AstarteDevice` — the main object; wraps `DeviceClient<Mqtt<MemoryStore>>` and a `tokio::Runtime` so blocking FFI calls can drive async SDK operations
 - `AstarteVal` — FFI-safe enum covering all 13 representable `AstarteData` variants (see table below); `BinaryBlobArray` is omitted because nested `Vec<Vec<u8>>` is unsupported by BoltFFI's `#[data]` macro
 - `ObjectEntry` — plain data struct (`key: String`, `value: AstarteVal`) used to represent one field of an Object-aggregation event; passed as `Vec<ObjectEntry>` in `EventListener::on_object_received`
-- `EventListener` — callback interface implemented by Java callers to receive connect/disconnect/data events; has six methods: `on_connected`, `on_disconnected`, `on_data_received`, `on_object_received`, `on_property_received`, `on_property_unset`
-- `SdkError` — FFI error enum surfaced as a Java exception
+- `EventListener` — callback interface implemented by callers to receive connect/disconnect/data events; has six methods: `on_connected`, `on_disconnected`, `on_data_received`, `on_object_received`, `on_property_received`, `on_property_unset`
+- `SdkError` — FFI error enum surfaced as an exception in all target languages
 
 ### AstarteVal variants
 

@@ -12,19 +12,40 @@ using System.Text;
 
 namespace AstarteDeviceSdkBindings
 {
+    /// <summary>
+    /// Callback interface for receiving events from a connected Astarte device.
+    /// Implement this interface and pass an instance to
+    /// <see cref="AstarteDevice.StartListening"/>.
+    /// </summary>
     public interface EventListener
     {
-
+        /// <summary>Called when the device successfully connects to the broker.</summary>
         void OnConnected();
 
+        /// <summary>Called when the device disconnects from the broker.</summary>
         void OnDisconnected();
 
+        /// <summary>Called when a datastream value is received from the server.</summary>
+        /// <param name="interface">Fully-qualified Astarte interface name.</param>
+        /// <param name="path">Endpoint path within the interface.</param>
+        /// <param name="data">The received value.</param>
         void OnDataReceived(string @interface, string path, AstarteVal data);
 
+        /// <summary>Called when an object-aggregated datastream is received from the server.</summary>
+        /// <param name="interface">Fully-qualified Astarte interface name.</param>
+        /// <param name="path">Endpoint path within the interface.</param>
+        /// <param name="entries">The fields of the received object, one <see cref="ObjectEntry"/> per key.</param>
         void OnObjectReceived(string @interface, string path, ObjectEntry[] entries);
 
+        /// <summary>Called when a server-owned property value is set.</summary>
+        /// <param name="interface">Fully-qualified Astarte interface name.</param>
+        /// <param name="path">Endpoint path within the interface.</param>
+        /// <param name="data">The property value.</param>
         void OnPropertyReceived(string @interface, string path, AstarteVal data);
 
+        /// <summary>Called when a server-owned property is unset.</summary>
+        /// <param name="interface">Fully-qualified Astarte interface name.</param>
+        /// <param name="path">Endpoint path within the interface.</param>
         void OnPropertyUnset(string @interface, string path);
 
     }

@@ -8,45 +8,102 @@ using System.Text;
 
 namespace AstarteDeviceSdkBindings
 {
+    /// <summary>
+    /// Discriminated union of all value types supported by the Astarte Device SDK.
+    /// Use pattern matching to inspect the active variant.
+    /// </summary>
+    /// <remarks>
+    /// Variants that carry array fields (<see cref="BinaryBlob"/>, <see cref="DoubleArray"/>,
+    /// <see cref="IntegerArray"/>, <see cref="BooleanArray"/>, <see cref="LongIntegerArray"/>,
+    /// <see cref="StringArray"/>, <see cref="DateTimeArray"/>) are C# <c>record</c> types.
+    /// C# records use reference equality for array fields, so two instances with identical
+    /// content are not record-equal — compare <c>.Value</c> directly when structural
+    /// equality is needed.
+    /// </remarks>
     public abstract record AstarteVal
     {
         private AstarteVal() { }
+
+        /// <summary>A 64-bit IEEE 754 floating-point value.</summary>
+        /// <param name="Value">The double-precision floating-point number.</param>
         public sealed record Double(
             double Value
         ) : AstarteVal;
+
+        /// <summary>A 32-bit signed integer value.</summary>
+        /// <param name="Value">The integer.</param>
         public sealed record Integer(
             int Value
         ) : AstarteVal;
+
+        /// <summary>A boolean value.</summary>
+        /// <param name="Value">The boolean.</param>
         public sealed record Boolean(
             bool Value
         ) : AstarteVal;
+
+        /// <summary>A 64-bit signed integer value.</summary>
+        /// <param name="Value">The long integer.</param>
         public sealed record LongInteger(
             long Value
         ) : AstarteVal;
+
+        /// <summary>A UTF-8 string value. Named <c>IString</c> to avoid shadowing <see cref="System.String"/>.</summary>
+        /// <param name="Value">The string.</param>
         public sealed record IString(
             string Value
         ) : AstarteVal;
+
+        /// <summary>
+        /// A raw binary blob.
+        /// <para>
+        /// Note: two <c>BinaryBlob</c> instances with the same byte content are not record-equal
+        /// because C# records use reference equality for arrays. Compare <c>.Value</c> directly.
+        /// </para>
+        /// </summary>
+        /// <param name="Value">The raw bytes.</param>
         public sealed record BinaryBlob(
             byte[] Value
         ) : AstarteVal;
+
+        /// <summary>A point in time represented as milliseconds since the Unix epoch (UTC).</summary>
+        /// <param name="Value">Milliseconds since 1970-01-01T00:00:00Z.</param>
         public sealed record DateTime(
             long Value
         ) : AstarteVal;
+
+        /// <summary>An array of 64-bit floating-point values.</summary>
+        /// <param name="Value">The elements.</param>
         public sealed record DoubleArray(
             double[] Value
         ) : AstarteVal;
+
+        /// <summary>An array of 32-bit signed integer values.</summary>
+        /// <param name="Value">The elements.</param>
         public sealed record IntegerArray(
             int[] Value
         ) : AstarteVal;
+
+        /// <summary>An array of boolean values.</summary>
+        /// <param name="Value">The elements.</param>
         public sealed record BooleanArray(
             bool[] Value
         ) : AstarteVal;
+
+        /// <summary>An array of 64-bit signed integer values.</summary>
+        /// <param name="Value">The elements.</param>
         public sealed record LongIntegerArray(
             long[] Value
         ) : AstarteVal;
+
+        /// <summary>An array of UTF-8 string values.</summary>
+        /// <param name="Value">The elements.</param>
         public sealed record StringArray(
             string[] Value
         ) : AstarteVal;
+
+        /// <summary>An array of timestamps, each as milliseconds since the Unix epoch (UTC).</summary>
+        /// <param name="Value">The elements, each in milliseconds since 1970-01-01T00:00:00Z.</param>
         public sealed record DateTimeArray(
             long[] Value
         ) : AstarteVal;

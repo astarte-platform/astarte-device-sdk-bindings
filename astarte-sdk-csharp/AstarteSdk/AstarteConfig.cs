@@ -9,8 +9,16 @@ using System.Text;
 namespace AstarteDeviceSdkBindings
 {
     /// <summary>
-    /// Simplified configuration record.
+    /// Connection credentials and pairing configuration for an Astarte device.
     /// </summary>
+    /// <param name="Realm">The Astarte realm name the device belongs to.</param>
+    /// <param name="DeviceId">The unique device identifier (Base64-encoded 128-bit UUID).</param>
+    /// <param name="CredentialsSecret">The device credentials secret used for MQTT authentication.</param>
+    /// <param name="PairingUrl">The Astarte Pairing API base URL (e.g. <c>http://api.astarte.example/pairing</c>).</param>
+    /// <param name="IgnoreSsl">
+    /// When <see langword="true"/>, TLS certificate validation is skipped.
+    /// Use only in development or testing environments.
+    /// </param>
     public readonly record struct AstarteConfig(
         string Realm,
         string DeviceId,
