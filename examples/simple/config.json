@@ -1,0 +1,7 @@
+{
+  "realm": "test",
+  "device_id": "U9EGlB2oTTiTVIZOfxG4EA",
+  "credentials_secret": "f4pDDtniWfBvnfqSk3kRGpmwXMXdazzquhCS0D9R7OI=",
+  "pairing_url": "http://api.astarte.localhost/pairing",
+  "wait_receive": true
+}

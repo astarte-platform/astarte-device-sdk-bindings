@@ -1,0 +1,63 @@
+# Copyright 2026 SECO Mind Srl
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+[package]
+name = "astarte-device-sdk-bindings"
+version = "0.1.0"
+description = "Astarte device SDK bindings for Rust"
+edition = "2024"
+homepage = "https://astarte.cloud/"
+license = "Apache-2.0"
+repository = "https://github.com/astarte-platform/astarte-device-sdk-bindings"
+rust-version = "1.88"
+keywords = ["iot", "astarte", "ffi", "api-bindings"]
+
+[lib]
+name = "astarte_device_sdk_bindings"
+path = "src/lib.rs"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[dependencies]
+astarte-device-sdk = {version = "0.15.0", features = ["message-hub"]}
+color-eyre = "0.6.5"
+console-subscriber = "0.5.0"
+eyre = "0.6.12"
+ffi-convert = "0.7.0"
+ffi-convert-derive = "0.7.0"
+rustls = "0.23.40"
+tokio = { version = "1.52.3", features = [
+  "rt-multi-thread",
+  "tracing",
+]}
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+url = "2.5.8"
+uuid = "1.24.0"
+
+[dev-dependencies]
+serde = "1.0.229"
+serde_json = "1.0.151"
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+  "cfg(__coverage)",
+  "cfg(astarte_device_sdk_docsrs)",
+]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg=astarte_device_sdk_docsrs"]
