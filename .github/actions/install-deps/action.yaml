@@ -47,4 +47,5 @@ runs:
       run: |
         echo 'VCPKG_BINARY_SOURCES="clear;x-gha,readwrite"' >>"$GITHUB_ENV"
         echo "VCPKG_ROOT=$VCPKG_INSTALLATION_ROOT" >>"$GITHUB_ENV"
-        vcpkg install sqlite3
+        echo "VCPKGRS_DYNAMIC=1" >>"$GITHUB_ENV"
+        vcpkg install sqlite3:x64-windows
