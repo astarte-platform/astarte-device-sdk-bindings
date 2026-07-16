@@ -1,0 +1,6 @@
+[build.targets.wheel]
+packages = ["astarte"]
+
+[envs.examples.scripts]
+run = "python examples/send_example.py"
+

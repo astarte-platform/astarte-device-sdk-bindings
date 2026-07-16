@@ -1,0 +1,7 @@
+language = "C"
+no_includes = true
+documentation = false
+
+[parse]
+parse_deps = true
+include = ["ffi-convert"]

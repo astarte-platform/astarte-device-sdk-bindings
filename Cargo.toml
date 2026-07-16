@@ -1,0 +1,31 @@
+[package]
+name = "astarte-device-sdk-bindings"
+version = "0.1.0"
+edition = "2024"
+homepage = "https://astarte.cloud/"
+license = "Apache-2.0"
+repository = "https://github.com/astarte-platform/astarte-device-sdk-bindings"
+rust-version = "1.88"
+keywords = ["iot", "astarte", "ffi", "api-bindings"]
+
+[lib]
+name = "astarte_device_sdk_bindings"
+path = "src/lib.rs"
+crate-type = ["staticlib", "cdylib"]
+
+[dependencies]
+astarte-device-sdk = {version = "0.13.0", path = "/home/luca/Work/SecoMind/Public/astarte/sdks/rust/astarte-device-sdk-rust", features = ["message-hub"] }
+color-eyre = "0.6.5"
+console-subscriber = "0.5.0"
+eyre = "0.6.12"
+ffi-convert = "0.7.0"
+ffi-convert-derive = "0.7.0"
+rustls = "0.23.40"
+tokio = { version = "1.52.3", features = [
+  "rt-multi-thread",
+  "tracing",
+]}
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+url = "2.5.8"
+uuid = "1.24.0"
