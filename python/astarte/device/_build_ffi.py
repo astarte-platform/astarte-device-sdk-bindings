@@ -31,7 +31,10 @@ ffibuilder.cdef("""
     extern "Python" void loop_cbk(const struct NativeStringResult_bool *native_result, UserData user_data);
 """)
 
-ffibuilder.set_source("astarte.device._astarte_ffi", None)
+ffibuilder.set_source("_astarte_cffi",
+    """
+        #include <>
+    """, libraries = ["libastarte_device_sdk_bindings"])
 
 if __name__ == "__main__":
     ffibuilder.compile(verbose=True)

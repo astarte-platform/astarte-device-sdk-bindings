@@ -17,6 +17,7 @@ class DeviceConfig:
         pairing_url: str,
         interfaces_dir: str,
         writable_dir: str = "",
+        channel_size: int = 0,
     ):
         self._device_id = device_id
         self._cred_secr = cred_secr
@@ -24,6 +25,7 @@ class DeviceConfig:
         self._pairing_url = pairing_url
         self._interfaces_dir = interfaces_dir
         self._writable_dir = writable_dir
+        self._channel_size = channel_size
 
     def to_cdata(self) -> CDataRefs:
         """Convert configuration to native CData representation."""
@@ -38,6 +40,7 @@ class DeviceConfig:
 
         native_config = ffi.new("NativeDeviceConfig *")
         native_config.generic.interfaces_dir = interfaces_dir
+        native_config.generic.channel_size = self._channel_size
         native_config.generic.writable_dir = writable_dir
         native_config.connection.tag = lib.Mqtt
         native_config.connection.mqtt.device_id = device_id

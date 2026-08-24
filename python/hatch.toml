@@ -1,6 +1,9 @@
 [build.targets.wheel]
 packages = ["astarte"]
 
+[build.targets.ffi]
+packages = ["astarte/device/_build_ffi.py"]
+
 [envs.examples.scripts]
 run = "python examples/send_example.py"
 
