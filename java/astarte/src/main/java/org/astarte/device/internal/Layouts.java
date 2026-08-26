@@ -44,6 +44,9 @@ public final class Layouts {
     /** 1-byte boolean */
     public static final ValueLayout.OfBoolean BOOL = ValueLayout.JAVA_BOOLEAN;
 
+    // string poninter
+    public static final AddressLayout STR_PTR = PTR.withTargetLayout(ValueLayout.JAVA_BYTE);
+
     // ── CArray_u8  {ptr, size}  – 16 bytes ──────────────────────────────────
     public static final StructLayout CARRAY_U8 = MemoryLayout.structLayout(
         PTR.withName("data_ptr"),
@@ -237,7 +240,7 @@ public final class Layouts {
     public static final StructLayout NATIVE_STRING_RESULT_BOOL = MemoryLayout.structLayout(
         INT32.withName("tag"),
         MemoryLayout.paddingLayout(4),
-        MemoryLayout.paddingLayout(8) // union: largest is ADDRESS (8 bytes)
+        MemoryLayout.unionLayout(BOOL, STR_PTR)
     ).withName("NativeStringResult_bool");
 
     public static final long NSR_BOOL_TAG_OFFSET   = 0L;
@@ -249,6 +252,8 @@ public final class Layouts {
     // NativeStringResult_bool tag constants (Ok_bool = 0, Err_bool = 1)
     public static final int NSR_OK  = 0;
     public static final int NSR_ERR = 1;
+
+    public static final AddressLayout NATIVE_STRING_RESULT_BOOL_PTR = PTR.withTargetLayout(NATIVE_STRING_RESULT_BOOL);
 
     // ── NativeStringResult_NativeManuallyDrop_NativeDeviceEvent ─────────────
     //   int tag (4) + 4 pad + union { NativeDeviceEvent ok (56) | ptr err (8) }
@@ -265,6 +270,8 @@ public final class Layouts {
     public static final long NSR_EVENT_TAG_OFFSET = 0L;
     public static final long NSR_EVENT_OK_OFFSET  = 8L;
     public static final long NSR_EVENT_ERR_OFFSET = 8L;
+
+    public static final AddressLayout NATIVE_STRING_RESULT_EVENT_PTR = PTR.withTargetLayout(NSR_DEVICE_EVENT);
 
     // ── NativeOption_NativeTimestamp ─────────────────────────────────────────
     //   int tag (4) + 4 pad + union { int64_t some (8) } = 16 bytes
@@ -365,6 +372,8 @@ public final class Layouts {
     public static final long NSR_ODD_TAG_OFFSET = 0L;
     public static final long NSR_ODD_OK_OFFSET  = 8L;
     public static final long NSR_ODD_ERR_OFFSET = 8L;
+
+    public static final AddressLayout NATIVE_STRING_RESULT_OPTIONAL_DEVICE_DATA_PTR = PTR.withTargetLayout(NSR_OPTION_DEVICE_DATA);
 
     // ── NativeMqttConnectionConfig ───────────────────────────────────────────
     //   4 × ptr = 32 bytes

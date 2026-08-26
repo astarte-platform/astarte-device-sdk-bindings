@@ -12,8 +12,6 @@ import static org.example.app.MessageUtils.getMessage;
 import org.astarte.device.AstarteDevice;
 import org.astarte.device.DeviceConfig;
 
-import org.apache.commons.text.WordUtils;
-
 public class App {
     public static void main(String[] args) {
         AstarteDevice device = new AstarteDevice();
@@ -24,6 +22,6 @@ public class App {
         LinkedList tokens;
         tokens = split(getMessage());
         String result = join(tokens);
-        System.out.println(WordUtils.capitalize(result));
+        System.out.println(result);
     }
 }

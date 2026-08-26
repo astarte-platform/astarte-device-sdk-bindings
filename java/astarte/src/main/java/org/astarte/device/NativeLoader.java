@@ -139,7 +139,8 @@ public final class NativeLoader {
     );
     
     // Upcall descriptors
-    public static final FunctionDescriptor CALLBACK_BOOL_DESC = FunctionDescriptor.ofVoid(PTR, PTR);
-    public static final FunctionDescriptor CALLBACK_EVENT_DESC = FunctionDescriptor.ofVoid(PTR, PTR);
-    public static final FunctionDescriptor CALLBACK_GET_PROP_DESC = FunctionDescriptor.ofVoid(PTR, PTR);
+    // FIXME here we probably need pointers with a target layout 
+    public static final FunctionDescriptor CALLBACK_BOOL_DESC = FunctionDescriptor.ofVoid(NATIVE_STRING_RESULT_BOOL_PTR, PTR);
+    public static final FunctionDescriptor CALLBACK_EVENT_DESC = FunctionDescriptor.ofVoid(NATIVE_STRING_RESULT_EVENT_PTR, PTR);
+    public static final FunctionDescriptor CALLBACK_GET_PROP_DESC = FunctionDescriptor.ofVoid(NATIVE_STRING_RESULT_OPTIONAL_DEVICE_DATA_PTR, PTR);
 }

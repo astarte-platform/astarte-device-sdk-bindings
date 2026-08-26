@@ -24,8 +24,9 @@ public final class ResultDecoder {
      */
     public static void decodeBoolResult(MemorySegment seg) {
         int tag = seg.get(INT32, NSR_BOOL_TAG_OFFSET);
+
         if (tag == NSR_ERR) {
-            MemorySegment errPtr = seg.get(PTR, NSR_BOOL_ERR_OFFSET);
+            MemorySegment errPtr = seg.get(PTR, NSR_BOOL_ERR_OFFSET).reinterpret(1024);
             String errMsg = errPtr.getString(0);
             throw new AstarteException(errMsg);
         }

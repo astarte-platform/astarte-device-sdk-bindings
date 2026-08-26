@@ -2,6 +2,8 @@ package org.astarte.device.internal;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -26,15 +28,10 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * {@link #unregisterStub(MemorySegment)}.
  */
 public final class CallbackRegistry {
-
     private CallbackRegistry() {}
 
     /** Map from sentinel address → arbitrary Java payload. */
-    private static final ConcurrentHashMap<Long, Object> HANDLE_MAP = new ConcurrentHashMap<>();
-
-    /** Set of live upcall stubs. */
-    private static final CopyOnWriteArrayList<MemorySegment> LIVE_STUBS =
-            new CopyOnWriteArrayList<>();
+    private static final ConcurrentHashMap<CallbackHandle, CallbackData<Object>> HANDLE_MAP = new ConcurrentHashMap<>();
 
     // ── UserData sentinels ────────────────────────────────────────────────────
 
@@ -43,12 +40,12 @@ public final class CallbackRegistry {
      * under its address, and return the segment.  Pass the segment directly as
      * {@code user_data} (the FFM linker will pass its raw address to native code).
      */
-    public static MemorySegment registerPayload(Object payload) {
-        // FIXME i think this never gets cleared since it's created in the global arena
-        MemorySegment sentinel = Arena.global().allocate(1L);
-        long addr = sentinel.address();
-        HANDLE_MAP.put(addr, payload);
-        return sentinel;
+    public static <T> CallbackHandle registerPayload(CallbackData<T> payload) {
+        CallbackHandle handle = CallbackHandle.nextHandle();
+        HANDLE_MAP.put(handle, (CallbackData<Object>) payload);
+        System.out.println("register");
+        System.out.println(handle);
+        return handle;
     }
 
     /**
@@ -56,19 +53,70 @@ public final class CallbackRegistry {
      * if no payload was registered for that address (e.g. double-pop).
      */
     @SuppressWarnings("unchecked")
-    public static <T> T popPayload(long address) {
-        return (T) HANDLE_MAP.remove(address);
+    public static <T> CallbackData<T> popPayload(MemorySegment fakeHandle) {
+        CallbackHandle handle = CallbackHandle.ofMemorySegment(fakeHandle);
+        System.out.println("pop");
+        System.out.println(handle);
+        return (CallbackData<T>) HANDLE_MAP.remove(handle);
     }
 
-    // ── Upcall stubs ─────────────────────────────────────────────────────────
+    public record CallbackData<T>(CompletableFuture<T> future, Arena arena) {}
 
-    /** Register an upcall stub to prevent it from being GC'd. */
-    public static void registerStub(MemorySegment stub) {
-        LIVE_STUBS.add(stub);
-    }
+    public static class CallbackHandle {
+        private static final AtomicLong CURRENT_HANDLE = new AtomicLong(0);
+        private static final long MAX;
+        
+        static {
+            long ptrBytes = Layouts.PTR.byteSize();
+            
+            if (ptrBytes == 8) {
+                MAX = Long.MAX_VALUE;
+            }
+            else if (ptrBytes == 4) {
+                MAX = (long) Integer.MAX_VALUE;
+            }
+            else {
+                throw new RuntimeException(String.format("size of pointer not supported %d", ptrBytes));
+            }
+        }
 
-    /** Unregister an upcall stub after the callback has been invoked. */
-    public static void unregisterStub(MemorySegment stub) {
-        LIVE_STUBS.remove(stub);
+        private final long handle;
+
+        private CallbackHandle(long inHandle) {
+            handle = inHandle;
+        }
+
+        private static CallbackHandle nextHandle() {
+            CallbackHandle newHandle = new CallbackHandle(CURRENT_HANDLE.getAndIncrement());
+            return newHandle;
+        }
+
+        public static CallbackHandle ofMemorySegment(MemorySegment fakeMemorySegment) {
+            long fakeAddress = fakeMemorySegment.address();
+            return new CallbackHandle(fakeAddress);
+        }
+
+        public MemorySegment fakeMemorySegment() {
+            // NOTE this must not be dereferenced
+            long fakeAddress = this.handle % MAX;
+            return MemorySegment.ofAddress(fakeAddress);
+        }
+
+        public int hashCode() {
+            return Long.hashCode(this.handle);
+        }
+
+        public boolean equals(Object obj) {
+            if (obj != null && obj instanceof CallbackHandle) {
+                return ((CallbackHandle) obj).handle == this.handle;
+            }
+            else {
+                return false;
+            }
+        }
+
+        public String toString() {
+            return String.format("CallbackHandle(%d)", this.handle);
+        }
     }
 }
