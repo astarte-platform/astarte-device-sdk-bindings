@@ -15,7 +15,13 @@ import org.astarte.device.DeviceConfig;
 public class App {
     public static void main(String[] args) {
         AstarteDevice device = new AstarteDevice();
-        DeviceConfig config = new DeviceConfig.Mqtt("OqwCWJw8S5ei62ZPcxTzWw", "HqoCdyt8JCbEvhK75w7IKYd+ghhVDHhvBpDK6uUWIG8=", "test", "http://api.astarte.localhost/pairing", "examples/interfaces", "/tmp/bindings-test", 10);
+        DeviceConfig config = new DeviceConfig.Mqtt("OqwCWJw8S5ei62ZPcxTzWw",
+            "HqoCdyt8JCbEvhK75w7IKYd+ghhVDHhvBpDK6uUWIG8=",
+            "test",
+            "http://api.astarte.localhost/pairing",
+            "/home/luca/Work/SecoMind/Public/astarte/libraries/device-sdk-bindings/astarte-device-sdk-bindings/java/examples/interfaces",
+            "/tmp/bindings-test",
+            10);
 
         device.connect(config).join();
 

@@ -43,8 +43,6 @@ public final class CallbackRegistry {
     public static <T> CallbackHandle registerPayload(CallbackData<T> payload) {
         CallbackHandle handle = CallbackHandle.nextHandle();
         HANDLE_MAP.put(handle, (CallbackData<Object>) payload);
-        System.out.println("register");
-        System.out.println(handle);
         return handle;
     }
 
@@ -55,8 +53,6 @@ public final class CallbackRegistry {
     @SuppressWarnings("unchecked")
     public static <T> CallbackData<T> popPayload(MemorySegment fakeHandle) {
         CallbackHandle handle = CallbackHandle.ofMemorySegment(fakeHandle);
-        System.out.println("pop");
-        System.out.println(handle);
         return (CallbackData<T>) HANDLE_MAP.remove(handle);
     }
 
