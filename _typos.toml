@@ -1,4 +1,4 @@
-# Copyright 2025, 2026 SECO Mind Srl
+# Copyright 2026 SECO Mind Srl
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,18 +14,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-version = 1
-SPDX-PackageName = "Astarte device SDK bindings"
-SPDX-PackageDownloadLocation = "https://github.com/astarte-platform/astarte-device-sdk-bindings"
+[files]
+extend-exclude = [
+  "assets/**/*.svg",
+  "assets/**/*.ico",
+]
 
-[[annotations]]
-path = "**/interfaces/**.json"
-precedence = "aggregate"
-SPDX-FileCopyrightText = "SECO Mind Srl"
-SPDX-License-Identifier = "CC0-1.0"
-
-[[annotations]]
-path = ["assets/logos/*"]
-precedence = "aggregate"
-SPDX-FileCopyrightText = "SECO Mind Srl"
-SPDX-License-Identifier = "Apache-2.0"
+[default.extend-identifiers]
+flate2 = "flate2"
+typ = "typ"
+clea = "clea"
